@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/yourusername/ApplyWise/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📚 Documentation
+    url: https://github.com/yourusername/ApplyWise/blob/main/IMPLEMENTATION_PLAN.md
+    about: Read the detailed implementation plan and architecture docs
+  - name: 🔧 Get Help
+    url: https://github.com/yourusername/ApplyWise/discussions/categories/q-a
+    about: Get help with setup, deployment, or usage issues

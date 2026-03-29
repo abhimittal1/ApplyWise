@@ -1,0 +1,94 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: #faf9fb;
+  --color-foreground: #1a1625;
+  --color-card: #ffffff;
+  --color-card-foreground: #1a1625;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1a1625;
+  --color-primary: #7c3aed;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f3f0f7;
+  --color-secondary-foreground: #1a1625;
+  --color-muted: #f3f0f7;
+  --color-muted-foreground: #71717a;
+  --color-accent: #ede9fe;
+  --color-accent-foreground: #5b21b6;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e4e0ec;
+  --color-input: #e4e0ec;
+  --color-ring: #7c3aed;
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #71717a;
+  --color-sidebar-active: #7c3aed;
+  --radius: 0.625rem;
+}
+
+.dark {
+  --color-background: #0f0b1a;
+  --color-foreground: #f0ecf5;
+  --color-card: #1a1527;
+  --color-card-foreground: #f0ecf5;
+  --color-popover: #1a1527;
+  --color-popover-foreground: #f0ecf5;
+  --color-primary: #a78bfa;
+  --color-primary-foreground: #1e1b4b;
+  --color-secondary: #231e33;
+  --color-secondary-foreground: #f0ecf5;
+  --color-muted: #231e33;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #2d2547;
+  --color-accent-foreground: #c4b5fd;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #2d2547;
+  --color-input: #2d2547;
+  --color-ring: #a78bfa;
+  --color-sidebar: #1a1527;
+  --color-sidebar-foreground: #a1a1aa;
+  --color-sidebar-active: #a78bfa;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+/* Smooth theme transitions */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
