@@ -330,15 +330,15 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Contact & Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/ApplyWise/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/ApplyWise/discussions)
-- **Email**: your.email@example.com
+- **Issues**: [GitHub Issues](https://github.com/abhishekmittal/ApplyWise/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/abhishekmittal/ApplyWise/discussions)
+- **Email**: abhishek.mittal@example.com
 
 ---
 
 <div align="center">
 
-**Built with ❤️ by [Your Name]**
+**Built with ❤️ by Abhishek Mittal**
 
 ⭐ Star this repo if you find it helpful!
 
