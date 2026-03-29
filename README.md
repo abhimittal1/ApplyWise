@@ -330,9 +330,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Contact & Support
 
-- **Issues**: [GitHub Issues](https://github.com/abhishekmittal/ApplyWise/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/abhishekmittal/ApplyWise/discussions)
-- **Email**: abhishek.mittal@example.com
+- **Email**: abhishekmittal24gold@gmail.com
 
 ---
 
