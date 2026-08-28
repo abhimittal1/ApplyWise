@@ -12,9 +12,10 @@ build/
 # Environment
 .env
 .env.local
+.env.*
+!.env.example
 .config/
 *.log
-.env.example
 
 
 # IDE
