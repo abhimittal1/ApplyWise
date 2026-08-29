@@ -17,12 +17,12 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Knowledge', href: '/knowledge', icon: BookOpen },
-  { label: 'Jobs', href: '/jobs', icon: Briefcase },
-  { label: 'Tracker', href: '/tracker', icon: ClipboardList },
-  { label: 'Interview Prep', href: '/prep', icon: GraduationCap },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  { label: 'Dashboard', href: '/app', icon: LayoutDashboard },
+  { label: 'Knowledge', href: '/app/knowledge', icon: BookOpen },
+  { label: 'Jobs', href: '/app/jobs', icon: Briefcase },
+  { label: 'Tracker', href: '/app/tracker', icon: ClipboardList },
+  { label: 'Interview Prep', href: '/app/prep', icon: GraduationCap },
+  { label: 'Settings', href: '/app/settings', icon: Settings },
 ];
 
 interface SidebarProps {
@@ -45,15 +45,16 @@ export default function Sidebar({ onClose }: SidebarProps) {
     <aside className="flex h-full flex-col bg-sidebar border-r border-border">
       {/* Logo */}
       <div className="flex h-14 items-center justify-between border-b border-border px-4">
-        <Link to="/" className="flex items-center gap-2" onClick={onClose}>
+        <Link to="/app" className="flex items-center gap-2" onClick={onClose}>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold tracking-tight">CareerOS</span>
+          <span className="text-lg font-bold tracking-tight">ApplyWise</span>
         </Link>
         <button
           onClick={onClose}
           className="rounded-md p-1.5 text-muted-foreground hover:bg-accent lg:hidden"
+          aria-label="Close sidebar"
         >
           <X className="h-5 w-5" />
         </button>
@@ -63,8 +64,8 @@ export default function Sidebar({ onClose }: SidebarProps) {
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {navItems.map((item) => {
           const isActive =
-            item.href === '/'
-              ? location.pathname === '/'
+            item.href === '/app'
+              ? location.pathname === '/app' || location.pathname === '/app/' || location.pathname === '/app/dashboard'
               : location.pathname.startsWith(item.href);
           return (
             <Link
@@ -74,7 +75,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-primary/10 text-primary font-semibold'
                   : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
               )}
             >

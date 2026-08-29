@@ -9,6 +9,13 @@ interface NavbarProps {
 }
 
 const pageTitles: Record<string, string> = {
+  '/app': 'Dashboard',
+  '/app/dashboard': 'Dashboard',
+  '/app/knowledge': 'Knowledge Base',
+  '/app/jobs': 'Jobs',
+  '/app/tracker': 'Application Tracker',
+  '/app/prep': 'Interview Prep',
+  '/app/settings': 'Settings',
   '/': 'Dashboard',
   '/knowledge': 'Knowledge Base',
   '/jobs': 'Jobs',
@@ -24,7 +31,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const pageTitle = pageTitles[location.pathname] || '';
+  const pageTitle = pageTitles[location.pathname] || 'Dashboard';
 
   const initials = user?.name
     ?.split(' ')
@@ -49,6 +56,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         <button
           onClick={onMenuClick}
           className="rounded-lg p-2 text-muted-foreground hover:bg-accent lg:hidden"
+          aria-label="Open navigation menu"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -61,6 +69,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
           className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+          aria-label="Toggle theme"
         >
           {resolvedTheme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
         </button>
@@ -85,7 +94,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <Link
-                to="/settings"
+                to="/app/settings"
                 onClick={() => setDropdownOpen(false)}
                 className="mt-1 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               >

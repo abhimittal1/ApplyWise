@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, ArrowLeft } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -18,7 +18,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(email, password, name);
-      navigate('/');
+      navigate('/app', { replace: true });
     } catch {
       setError('Registration failed. Email may already be in use.');
     } finally {
@@ -27,15 +27,28 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
+        {/* Back to Home Link */}
+        <div className="mb-6">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Home
+          </Link>
+        </div>
+
         {/* Logo */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
-            <Sparkles className="h-6 w-6 text-primary-foreground" />
-          </div>
+          <Link to="/" className="inline-flex items-center gap-2 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
+              <Sparkles className="h-6 w-6 text-primary-foreground" />
+            </div>
+          </Link>
           <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Start your AI-powered career journey</p>
+          <p className="mt-1 text-sm text-muted-foreground">Start your AI-powered career journey with ApplyWise</p>
         </div>
 
         {/* Card */}
@@ -46,7 +59,7 @@ export default function RegisterPage() {
             )}
 
             <div>
-              <label htmlFor="name" className="mb-1.5 block text-sm font-medium">Name</label>
+              <label htmlFor="name" className="mb-1.5 block text-sm font-medium">Full Name</label>
               <input
                 id="name"
                 type="text"
@@ -54,7 +67,7 @@ export default function RegisterPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="block w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Your name"
+                placeholder="Alex Morgan"
               />
             </div>
 
@@ -81,7 +94,7 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="block w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="••••••••"
+                placeholder="At least 8 characters"
               />
             </div>
 
@@ -90,7 +103,7 @@ export default function RegisterPage() {
               disabled={loading}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create account'}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create free account'}
             </button>
           </form>
         </div>

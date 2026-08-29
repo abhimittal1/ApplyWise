@@ -76,13 +76,13 @@ export default function DashboardPage() {
         <div className="rounded-xl border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 className="font-semibold">Recent Documents</h2>
-            <Link to="/knowledge" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            <Link to="/app/knowledge" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
               View all <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="p-5">
             {documents.length === 0 ? (
-              <Link to="/knowledge" className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border py-8 text-center transition-colors hover:border-primary/50 hover:bg-accent/50">
+              <Link to="/app/knowledge" className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border py-8 text-center transition-colors hover:border-primary/50 hover:bg-accent/50">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                   <Upload className="h-5 w-5 text-primary" />
                 </div>
@@ -116,13 +116,13 @@ export default function DashboardPage() {
         <div className="rounded-xl border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 className="font-semibold">Recent Jobs</h2>
-            <Link to="/jobs" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            <Link to="/app/jobs" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
               View all <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="p-5">
             {jobs.length === 0 ? (
-              <Link to="/jobs" className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border py-8 text-center transition-colors hover:border-primary/50 hover:bg-accent/50">
+              <Link to="/app/jobs" className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border py-8 text-center transition-colors hover:border-primary/50 hover:bg-accent/50">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                   <Briefcase className="h-5 w-5 text-primary" />
                 </div>
