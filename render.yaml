@@ -21,3 +21,22 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+
+  - type: worker
+    name: applywise-worker
+    runtime: python
+    rootDir: apps/api
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.workers.celery_app.celery_app worker --loglevel=info
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_SYNC
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

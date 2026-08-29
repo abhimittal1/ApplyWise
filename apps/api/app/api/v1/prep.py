@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limit import generation_rate_limiter
 from app.models.user import User
 from app.models.job import Job
 from app.models.generated import GeneratedOutput, OutputType
@@ -15,7 +16,7 @@ from app.services.generation.prep_generator import generate_prep_questions
 router = APIRouter(prefix="/prep", tags=["prep"])
 
 
-@router.post("/questions/{job_id}", response_model=PrepResponse)
+@router.post("/questions/{job_id}", response_model=PrepResponse, dependencies=[Depends(generation_rate_limiter)])
 async def get_prep_questions(
     job_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),

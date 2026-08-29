@@ -11,15 +11,17 @@ async def retrieve_chunks(
     user_id: uuid.UUID,
     db: AsyncSession,
     top_k: int = 8,
+    min_similarity: float = 0.25,
 ) -> list[dict]:
     """
     Retrieve top-K relevant chunks for a user's query using pgvector cosine similarity.
+    Enforces strict tenant scoping (user_id) and similarity thresholding.
     Returns list of {content, metadata, score, chunk_id}.
     """
     # Generate query embedding
     query_embedding = await generate_embedding(query)
 
-    # pgvector cosine distance search (1 - cosine_distance = similarity)
+    # pgvector cosine distance search with tenant isolation pre-filter
     result = await db.execute(
         text("""
             SELECT
@@ -39,13 +41,15 @@ async def retrieve_chunks(
     )
 
     rows = result.fetchall()
-    return [
-        {
-            "chunk_id": str(row[0]),
-            "content": row[1],
-            "metadata": row[2] or {},
-            "chunk_index": row[3],
-            "score": float(row[4]) if row[4] else 0.0,
-        }
-        for row in rows
-    ]
+    chunks = []
+    for row in rows:
+        sim_score = float(row[4]) if row[4] else 0.0
+        if sim_score >= min_similarity:
+            chunks.append({
+                "chunk_id": str(row[0]),
+                "content": row[1],
+                "metadata": row[2] or {},
+                "chunk_index": row[3],
+                "score": sim_score,
+            })
+    return chunks

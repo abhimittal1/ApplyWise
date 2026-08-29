@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=4000, description="User question or query")
     conversation_id: uuid.UUID | None = None
 
 

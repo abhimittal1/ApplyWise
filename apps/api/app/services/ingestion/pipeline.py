@@ -13,6 +13,10 @@ from app.services.ingestion.embeddings import generate_embeddings_batch
 
 logger = logging.getLogger(__name__)
 
+# Security & Denial of Wallet Boundaries
+MAX_EXTRACTED_CHARS = 200_000  # Cap raw text extraction to ~50,000 words
+MAX_CHUNKS_PER_DOC = 150       # Cap number of chunks per document to protect embedding quota
+
 
 async def process_document(document_id: uuid.UUID, db: AsyncSession) -> None:
     """
@@ -40,6 +44,12 @@ async def process_document(document_id: uuid.UUID, db: AsyncSession) -> None:
 
         # 2. Extract text (CPU-bound, run in thread pool)
         extracted = await asyncio.to_thread(extract_text, file_content, doc.file_type)
+        if len(extracted) > MAX_EXTRACTED_CHARS:
+            logger.warning(
+                f"Document {document_id}: extracted text ({len(extracted)} chars) exceeds limit ({MAX_EXTRACTED_CHARS}), truncating"
+            )
+            extracted = extracted[:MAX_EXTRACTED_CHARS]
+
         doc.extracted_text = extracted
         await db.flush()
 
@@ -57,6 +67,12 @@ async def process_document(document_id: uuid.UUID, db: AsyncSession) -> None:
             await db.flush()
             logger.warning(f"Document {document_id}: no chunks generated")
             return
+
+        if len(chunks) > MAX_CHUNKS_PER_DOC:
+            logger.warning(
+                f"Document {document_id}: chunk count ({len(chunks)}) exceeds max ({MAX_CHUNKS_PER_DOC}), capping"
+            )
+            chunks = chunks[:MAX_CHUNKS_PER_DOC]
 
         # 4. Generate embeddings (async OpenAI call)
         chunk_texts = [c["content"] for c in chunks]

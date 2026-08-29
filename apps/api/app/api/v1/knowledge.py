@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limit import chat_rate_limiter
 from app.models.user import User
 from app.models.chat import Conversation, ChatMessage
 from app.schemas.knowledge import (
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 logger = logging.getLogger(__name__)
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, dependencies=[Depends(chat_rate_limiter)])
 async def knowledge_chat(
     body: ChatRequest,
     db: AsyncSession = Depends(get_db),
@@ -117,7 +118,7 @@ async def knowledge_chat(
     )
 
 
-@router.post("/chat/stream")
+@router.post("/chat/stream", dependencies=[Depends(chat_rate_limiter)])
 async def knowledge_chat_stream(
     body: ChatRequest,
     db: AsyncSession = Depends(get_db),

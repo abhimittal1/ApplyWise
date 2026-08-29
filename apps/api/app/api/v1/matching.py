@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limit import matching_rate_limiter
 from app.models.user import User
 from app.models.job import Job, JobMatch
 from app.services.matching.scorer import compute_match_score
@@ -13,7 +14,7 @@ from app.services.matching.scorer import compute_match_score
 router = APIRouter(prefix="/matching", tags=["matching"])
 
 
-@router.post("/jobs/{job_id}/match")
+@router.post("/jobs/{job_id}/match", dependencies=[Depends(matching_rate_limiter)])
 async def match_job(
     job_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -28,7 +29,10 @@ async def match_job(
 
     # Check cache
     cached = await db.execute(
-        select(JobMatch).where(JobMatch.job_id == job_id)
+        select(JobMatch).where(
+            JobMatch.job_id == job_id,
+            JobMatch.user_id == current_user.id,
+        )
     )
     existing = cached.scalar_one_or_none()
     if existing:
@@ -59,12 +63,12 @@ async def match_job(
     return match_result
 
 
-@router.post("/jobs/rematch-all")
+@router.post("/jobs/rematch-all", dependencies=[Depends(matching_rate_limiter)])
 async def rematch_all_jobs(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
 ):
-    """Re-score all saved jobs. Runs in background."""
+    """Re-score all saved jobs. Runs in background with bounded workload."""
     background_tasks.add_task(_rematch_all, current_user.id)
     return {"message": "Re-matching all jobs in background"}
 
@@ -82,9 +86,12 @@ async def _rematch_all(user_id: uuid.UUID):
                 await session.delete(match)
             await session.flush()
 
-            # Re-score all jobs
+            # Re-score jobs (bounded to latest 50 to prevent unbounded background denial of wallet)
             jobs_result = await session.execute(
-                select(Job).where(Job.user_id == user_id)
+                select(Job)
+                .where(Job.user_id == user_id)
+                .order_by(Job.created_at.desc())
+                .limit(50)
             )
             for job in jobs_result.scalars().all():
                 try:

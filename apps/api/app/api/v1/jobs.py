@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limit import job_create_rate_limiter, job_import_rate_limiter, job_search_rate_limiter
+from app.core.ssrf import safe_fetch_url, SSRFValidationError
 from app.models.user import User
 from app.models.job import Job, JobSource, job_skills as job_skills_table
 from app.schemas.job import (
@@ -22,7 +24,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 logger = logging.getLogger(__name__)
 
 
-@router.post("", response_model=JobResponse, status_code=201)
+@router.post("", response_model=JobResponse, status_code=201, dependencies=[Depends(job_create_rate_limiter)])
 async def create_job(
     body: JobCreate,
     background_tasks: BackgroundTasks,
@@ -53,7 +55,7 @@ async def create_job(
     return job
 
 
-@router.post("/import-text", response_model=JobPreview)
+@router.post("/import-text", response_model=JobPreview, dependencies=[Depends(job_import_rate_limiter)])
 async def import_from_text(
     body: JobImportText,
     current_user: User = Depends(get_current_user),
@@ -68,7 +70,7 @@ async def import_from_text(
     )
 
 
-@router.post("/import-text/confirm", response_model=JobResponse, status_code=201)
+@router.post("/import-text/confirm", response_model=JobResponse, status_code=201, dependencies=[Depends(job_create_rate_limiter)])
 async def confirm_text_import(
     body: JobCreate,
     background_tasks: BackgroundTasks,
@@ -99,24 +101,33 @@ async def confirm_text_import(
     return job
 
 
-@router.post("/import-url", response_model=JobPreview)
+@router.post("/import-url", response_model=JobPreview, dependencies=[Depends(job_import_rate_limiter)])
 async def import_from_url(
     body: JobImportURL,
     current_user: User = Depends(get_current_user),
 ):
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            resp = await client.get(body.url, headers={"User-Agent": "CareerOS/1.0"})
-            resp.raise_for_status()
-    except httpx.HTTPError:
+        html_text = await safe_fetch_url(body.url)
+    except SSRFValidationError as e:
+        logger.warning(f"SSRF validation blocked URL '{body.url}': {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid or prohibited URL: {e}")
+    except httpx.HTTPError as e:
+        logger.warning(f"Failed to fetch job URL '{body.url}': {e}")
         raise HTTPException(status_code=400, detail="Could not fetch the URL")
+    except Exception as e:
+        logger.error(f"Unexpected error fetching job URL: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process the URL")
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    soup = BeautifulSoup(html_text, "html.parser")
+    # Strip script and style tags to prevent garbage injection into parsing
+    for script_or_style in soup(["script", "style", "noscript", "svg", "header", "footer", "nav"]):
+        script_or_style.extract()
+
     main = soup.find("main") or soup.find("article") or soup.find("body")
     text_content = main.get_text(separator="\n", strip=True) if main else ""
 
     if not text_content:
-        raise HTTPException(status_code=400, detail="Could not extract content from URL")
+        raise HTTPException(status_code=400, detail="Could not extract readable content from URL")
 
     parsed = await parse_job_html(text_content)
     return JobPreview(
@@ -129,7 +140,7 @@ async def import_from_url(
     )
 
 
-@router.post("/import-url/confirm", response_model=JobResponse, status_code=201)
+@router.post("/import-url/confirm", response_model=JobResponse, status_code=201, dependencies=[Depends(job_create_rate_limiter)])
 async def confirm_url_import(
     body: JobCreate,
     background_tasks: BackgroundTasks,
@@ -158,7 +169,7 @@ async def confirm_url_import(
     return job
 
 
-@router.post("/search", response_model=JobSearchResponse)
+@router.post("/search", response_model=JobSearchResponse, dependencies=[Depends(job_search_rate_limiter)])
 async def search_jobs(
     body: JobSearchRequest,
     current_user: User = Depends(get_current_user),
@@ -181,7 +192,7 @@ async def search_jobs(
     return JobSearchResponse(results=previews, total=len(previews), apis_used=apis_used)
 
 
-@router.post("/search/save", response_model=JobResponse, status_code=201)
+@router.post("/search/save", response_model=JobResponse, status_code=201, dependencies=[Depends(job_create_rate_limiter)])
 async def save_search_result(
     body: JobCreate,
     background_tasks: BackgroundTasks,
@@ -251,6 +262,7 @@ async def delete_job(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     await db.delete(job)
+    await db.flush()
 
 
 async def _embed_job(job_id: uuid.UUID, description: str):

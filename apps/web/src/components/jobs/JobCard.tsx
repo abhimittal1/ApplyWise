@@ -1,5 +1,6 @@
 import { Trash2, ExternalLink, MapPin, Briefcase, ClipboardPlus, Check } from 'lucide-react';
 import type { JobInfo } from '@/lib/api/jobs';
+import { sanitizeUrl } from '@/lib/security';
 
 interface JobCardProps {
   job: JobInfo;
@@ -18,6 +19,7 @@ function getScoreColor(score: number): string {
 
 export default function JobCard({ job, onDelete, onSelect, onTrack, isTracked, matchScore }: JobCardProps) {
   const score = matchScore ?? job.match_score;
+  const safeJobUrl = sanitizeUrl(job.url);
 
   return (
     <div
@@ -73,9 +75,9 @@ export default function JobCard({ job, onDelete, onSelect, onTrack, isTracked, m
             {isTracked ? 'Tracked' : 'Track'}
           </button>
 
-          {job.url && (
+          {safeJobUrl && (
             <a
-              href={job.url}
+              href={safeJobUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}

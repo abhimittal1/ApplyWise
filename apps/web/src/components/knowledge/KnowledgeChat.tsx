@@ -6,6 +6,7 @@ import {
   getConversationMessages,
   type ChatResponseData,
 } from '@/lib/api/knowledge';
+import { sanitizeUrl } from '@/lib/security';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -16,6 +17,10 @@ interface KnowledgeChatProps {
   conversationId: string | null;
   onConversationCreated: (id: string) => void;
 }
+
+const safeUrlTransform = (url: string): string => {
+  return sanitizeUrl(url) || '';
+};
 
 export default function KnowledgeChat({
   conversationId,
@@ -151,7 +156,36 @@ export default function KnowledgeChat({
             >
               {msg.role === 'assistant' ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1 text-foreground">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <ReactMarkdown
+                    urlTransform={safeUrlTransform}
+                    disallowedElements={['iframe', 'script', 'object', 'embed', 'form', 'input']}
+                    components={{
+                      a: ({ href, children, ...props }) => {
+                        const safeHref = href ? safeUrlTransform(href) : '';
+                        if (!safeHref) {
+                          return <span>{children}</span>;
+                        }
+                        return (
+                          <a
+                            href={safeHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline hover:opacity-80"
+                            {...props}
+                          >
+                            {children}
+                          </a>
+                        );
+                      },
+                      img: ({ alt }) => (
+                        <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                          [Image: {alt || 'embedded resource'}]
+                        </span>
+                      ),
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
                 </div>
               ) : (
                 <p className="whitespace-pre-wrap">{msg.content}</p>

@@ -1,3 +1,4 @@
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -33,22 +34,65 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
+def hash_token(token: str) -> str:
+    """Generate SHA-256 hash of a token string for secure at-rest database storage."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _get_signing_key() -> str:
+    if settings.ALGORITHM.startswith("RS") and settings.RSA_PRIVATE_KEY:
+        return settings.RSA_PRIVATE_KEY
+    return settings.SECRET_KEY
+
+
+def _get_verification_key() -> str:
+    if settings.ALGORITHM.startswith("RS") and settings.RSA_PUBLIC_KEY:
+        return settings.RSA_PUBLIC_KEY
+    return settings.SECRET_KEY
+
+
 def create_access_token(user_id: uuid.UUID) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {"sub": str(user_id), "exp": expire, "type": "access"}
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "iat": now,
+        "nbf": now,
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "jti": str(uuid.uuid4()),
+        "type": "access",
+    }
+    return jwt.encode(payload, _get_signing_key(), algorithm=settings.ALGORITHM)
 
 
 def create_refresh_token(user_id: uuid.UUID) -> tuple[str, datetime]:
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {"sub": str(user_id), "exp": expire, "type": "refresh"}
-    token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "iat": now,
+        "nbf": now,
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "jti": str(uuid.uuid4()),
+        "type": "refresh",
+    }
+    token = jwt.encode(payload, _get_signing_key(), algorithm=settings.ALGORITHM)
     return token, expire
 
 
 def decode_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token,
+            _get_verification_key(),
+            algorithms=[settings.ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+        )
         return payload
     except JWTError:
         raise HTTPException(
@@ -61,7 +105,7 @@ def decode_token(token: str) -> dict:
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-) -> User:
+    ) -> User:
     payload = decode_token(token)
     if payload.get("type") != "access":
         raise HTTPException(
@@ -75,7 +119,15 @@ async def get_current_user(
             detail="Invalid token payload",
         )
 
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    try:
+        parsed_user_id = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token identifier",
+        )
+
+    result = await db.execute(select(User).where(User.id == parsed_user_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(

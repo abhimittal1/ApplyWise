@@ -69,7 +69,10 @@ async def create_application(
 
     # Check if application already exists
     existing = await db.execute(
-        select(Application).where(Application.job_id == body.job_id)
+        select(Application).where(
+            Application.job_id == body.job_id,
+            Application.user_id == current_user.id,
+        )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Application already exists for this job")

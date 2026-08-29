@@ -1,19 +1,27 @@
 import json
+import logging
 from functools import lru_cache
 from typing import Union
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
     # App
     APP_NAME: str = "CareerOS"
+    ENVIRONMENT: str = "development"
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
 
     # Auth
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
+    JWT_ISSUER: str = "careeros-api"
+    JWT_AUDIENCE: str = "careeros-app"
+    RSA_PRIVATE_KEY: str = ""
+    RSA_PUBLIC_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
@@ -26,8 +34,17 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/careeros"
     DATABASE_URL_SYNC: str = "postgresql://postgres:postgres@localhost:5432/careeros"
 
-    # Redis
+    # Redis & Task Queue Infrastructure
     REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_SSL_VERIFY: bool = True
+    REDIS_MAX_CONNECTIONS: int = 20
+    REDIS_SOCKET_TIMEOUT: float = 2.0
+    REDIS_CONNECT_TIMEOUT: float = 2.0
+    REDIS_DEFAULT_CACHE_TTL: int = 3600  # Default 1 hour TTL
+    REDIS_MAX_CACHE_TTL: int = 86400  # Maximum 24 hour TTL guardrail
+
+    # Network Security / Reverse Proxy
+    TRUSTED_PROXIES: list[str] = ["127.0.0.1", "::1"]
 
     # AI
     OPENAI_API_KEY: str = ""
@@ -42,13 +59,53 @@ class Settings(BaseSettings):
     # Storage
     S3_BUCKET: str = ""
     S3_REGION: str = "us-east-1"
+    S3_ENDPOINT_URL: str = ""
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
-    CORS_ORIGIN_REGEX: str = r"^https://.*\.vercel\.app$"
+    CORS_ORIGIN_REGEX: str = ""
     FRONTEND_URL: str = ""
+
+    @field_validator("TRUSTED_PROXIES", mode="before")
+    @classmethod
+    def assemble_trusted_proxies(cls, v: Union[str, list[str]]) -> list[str]:
+        proxies: list[str] = []
+        if isinstance(v, str):
+            v_str = v.strip()
+            if v_str.startswith("[") and v_str.endswith("]"):
+                try:
+                    parsed = json.loads(v_str)
+                    if isinstance(parsed, list):
+                        proxies = [str(i).strip() for i in parsed if str(i).strip()]
+                except Exception:
+                    pass
+            if not proxies:
+                proxies = [i.strip().strip("'\"") for i in v_str.split(",") if i.strip()]
+        elif isinstance(v, list):
+            proxies = [str(i).strip() for i in v if str(i).strip()]
+
+        if not proxies:
+            proxies = ["127.0.0.1", "::1"]
+        return list(dict.fromkeys(proxies))
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        if self.ENVIRONMENT.lower() in ("production", "prod"):
+            if self.SECRET_KEY in ("change-me-in-production", "secret", "default", "") or len(self.SECRET_KEY) < 16:
+                raise ValueError(
+                    "CRITICAL SECURITY ERROR: A secure, random SECRET_KEY (min 16 chars) must be provided in production!"
+                )
+            if self.REDIS_URL.startswith("redis://") and not any(h in self.REDIS_URL for h in ("localhost", "127.0.0.1")):
+                logger.warning(
+                    "SECURITY WARNING: Production REDIS_URL is using unencrypted redis:// instead of rediss:// (TLS)."
+                )
+            if "@" not in self.REDIS_URL:
+                logger.warning(
+                    "SECURITY WARNING: Production REDIS_URL does not contain authentication credentials."
+                )
+        return self
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

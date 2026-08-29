@@ -1,27 +1,27 @@
 import uuid
 from datetime import datetime, date
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 from app.models.job import JobSource
 
 
 class JobCreate(BaseModel):
-    title: str
-    company: str
-    location: str | None = None
-    description: str | None = None
-    url: str | None = None
+    title: str = Field(..., min_length=1, max_length=255)
+    company: str = Field(..., min_length=1, max_length=255)
+    location: str | None = Field(None, max_length=255)
+    description: str | None = Field(None, max_length=30000)
+    url: str | None = Field(None, max_length=2048)
     remote: bool = False
-    job_type: str | None = None
+    job_type: str | None = Field(None, max_length=50)
     posted_at: date | None = None
     deadline: date | None = None
 
 
 class JobImportText(BaseModel):
-    raw_text: str
+    raw_text: str = Field(..., min_length=10, max_length=30000)
 
 
 class JobImportURL(BaseModel):
-    url: str
+    url: str = Field(..., min_length=4, max_length=2048)
 
 
 class JobPreview(BaseModel):
@@ -59,8 +59,8 @@ class JobDetailResponse(JobResponse):
 
 
 class JobSearchRequest(BaseModel):
-    query: str
-    location: str = ""
+    query: str = Field(..., min_length=1, max_length=200)
+    location: str = Field("", max_length=200)
 
 
 class JobSearchResponse(BaseModel):

@@ -3,7 +3,15 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else None
+client = (
+    openai.AsyncOpenAI(
+        api_key=settings.OPENAI_API_KEY,
+        timeout=30.0,
+        max_retries=2,
+    )
+    if settings.OPENAI_API_KEY
+    else None
+)
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 1536

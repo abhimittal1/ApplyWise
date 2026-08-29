@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
   const rootDir = path.resolve(__dirname, '../..');
-  const env = loadEnv(mode, rootDir, '');
+  const env = loadEnv(mode, rootDir, 'VITE_');
   const apiUrl = env.VITE_API_URL || process.env.VITE_API_URL || '';
 
   return {

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limit import generation_rate_limiter
 from app.models.user import User
 from app.models.job import Job, JobMatch
 from app.models.generated import GeneratedOutput, OutputType
@@ -37,7 +38,7 @@ async def _get_job(job_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSession) -> J
     return job
 
 
-@router.post("/resume-suggestions/{job_id}", response_model=ResumeSuggestions)
+@router.post("/resume-suggestions/{job_id}", response_model=ResumeSuggestions, dependencies=[Depends(generation_rate_limiter)])
 async def get_resume_suggestions(
     job_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -59,7 +60,7 @@ async def get_resume_suggestions(
     return ResumeSuggestions(**suggestions)
 
 
-@router.post("/cover-letter/{job_id}", response_model=CoverLetterResponse)
+@router.post("/cover-letter/{job_id}", response_model=CoverLetterResponse, dependencies=[Depends(generation_rate_limiter)])
 async def get_cover_letter(
     job_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -80,7 +81,7 @@ async def get_cover_letter(
     return CoverLetterResponse(content=content, job_id=job.id)
 
 
-@router.post("/recruiter-email/{job_id}", response_model=EmailResponse)
+@router.post("/recruiter-email/{job_id}", response_model=EmailResponse, dependencies=[Depends(generation_rate_limiter)])
 async def get_recruiter_email(
     job_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -101,7 +102,7 @@ async def get_recruiter_email(
     return EmailResponse(content=content, job_id=job.id)
 
 
-@router.post("/roadmap/{job_id}", response_model=RoadmapResponse)
+@router.post("/roadmap/{job_id}", response_model=RoadmapResponse, dependencies=[Depends(generation_rate_limiter)])
 async def get_roadmap(
     job_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -111,7 +112,10 @@ async def get_roadmap(
 
     # Get skill gaps from match
     match_result = await db.execute(
-        select(JobMatch).where(JobMatch.job_id == job.id)
+        select(JobMatch).where(
+            JobMatch.job_id == job.id,
+            JobMatch.user_id == current_user.id,
+        )
     )
     match = match_result.scalar_one_or_none()
     skill_gaps = match.skill_gaps if match and match.skill_gaps else []

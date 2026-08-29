@@ -26,11 +26,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check for OAuth callback token in URL fragment
-    const hash = window.location.hash;
-    if (hash.includes('token=')) {
-      const token = hash.split('token=')[1];
-      setAccessToken(token);
-      window.history.replaceState(null, '', window.location.pathname);
+    const rawHash = window.location.hash.startsWith('#')
+      ? window.location.hash.substring(1)
+      : window.location.hash;
+    if (rawHash) {
+      const params = new URLSearchParams(rawHash);
+      const token = params.get('token');
+      if (token) {
+        setAccessToken(token);
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
     }
 
     // Try to restore session

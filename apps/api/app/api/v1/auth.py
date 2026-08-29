@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.rate_limit import auth_rate_limiter
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
     get_current_user,
     hash_password,
+    hash_token,
     verify_password,
 )
 from app.models.user import User, RefreshToken
@@ -61,14 +63,14 @@ def _clear_auth_cookie(response: Response) -> None:
 
 
 async def _issue_tokens(user: User, response: Response, db: AsyncSession) -> TokenResponse:
-    """Create access + refresh tokens and set refresh token as httpOnly cookie."""
+    """Create access + refresh tokens and set refresh token as httpOnly cookie with hashed storage."""
     access_token = create_access_token(user.id)
     refresh_token_str, expires_at = create_refresh_token(user.id)
 
     rt = RefreshToken(
         id=uuid.uuid4(),
         user_id=user.id,
-        token=refresh_token_str,
+        token=hash_token(refresh_token_str),
         expires_at=expires_at,
     )
     db.add(rt)
@@ -82,7 +84,7 @@ async def _issue_tokens(user: User, response: Response, db: AsyncSession) -> Tok
     )
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(auth_rate_limiter)])
 async def register(
     body: UserRegister,
     response: Response,
@@ -104,7 +106,7 @@ async def register(
     return await _issue_tokens(user, response, db)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[Depends(auth_rate_limiter)])
 async def login(
     body: UserLogin,
     response: Response,
@@ -119,7 +121,7 @@ async def login(
     return await _issue_tokens(user, response, db)
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=TokenResponse, dependencies=[Depends(auth_rate_limiter)])
 async def refresh(
     request: Request,
     response: Response,
@@ -133,7 +135,8 @@ async def refresh(
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid token type")
 
-    result = await db.execute(select(RefreshToken).where(RefreshToken.token == token))
+    hashed_token = hash_token(token)
+    result = await db.execute(select(RefreshToken).where(RefreshToken.token == hashed_token))
     stored_token = result.scalar_one_or_none()
     if not stored_token:
         raise HTTPException(status_code=401, detail="Refresh token revoked")
@@ -162,7 +165,8 @@ async def logout(
 ):
     token = request.cookies.get("refresh_token")
     if token:
-        await db.execute(delete(RefreshToken).where(RefreshToken.token == token))
+        hashed_token = hash_token(token)
+        await db.execute(delete(RefreshToken).where(RefreshToken.token == hashed_token))
     _clear_auth_cookie(response)
     return {"message": "Logged out"}
 
@@ -219,10 +223,11 @@ async def google_callback(
     rt = RefreshToken(
         id=uuid.uuid4(),
         user_id=user.id,
-        token=refresh_token_str,
+        token=hash_token(refresh_token_str),
         expires_at=expires_at,
     )
     db.add(rt)
+    await db.flush()
 
     _set_auth_cookie(response, refresh_token_str)
 

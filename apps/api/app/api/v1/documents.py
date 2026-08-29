@@ -1,15 +1,19 @@
 import uuid
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limit import upload_rate_limiter
 from app.models.user import User
 from app.models.document import Document, DocumentChunk, DocumentStatus
 from app.schemas.document import DocumentResponse, DocumentDetailResponse, DocumentStatusResponse
 from app.services.storage import upload_file, delete_file
 from app.services.ingestion.pipeline import process_document
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -17,14 +21,41 @@ ALLOWED_TYPES = {"pdf", "docx", "txt"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
 
-@router.post("/upload", response_model=DocumentResponse, status_code=201)
+def validate_file_magic_bytes(content: bytes, ext: str) -> None:
+    """Validate file header magic bytes to prevent file extension spoofing."""
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    if ext == "pdf":
+        if not content.startswith(b"%PDF-"):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid PDF file format (file header signature mismatch).",
+            )
+    elif ext == "docx":
+        # DOCX is an OpenXML ZIP container (standard PK header)
+        if not (content.startswith(b"PK\x03\x04") or content.startswith(b"PK\x05\x06") or content.startswith(b"PK\x07\x08")):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid DOCX file format (file header signature mismatch).",
+            )
+    elif ext == "txt":
+        # Ensure txt does not contain binary NULL bytes (typical of executables/binaries)
+        if b"\x00" in content[:1024]:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid text file: binary content or non-text format detected.",
+            )
+
+
+@router.post("/upload", response_model=DocumentResponse, status_code=201, dependencies=[Depends(upload_rate_limiter)])
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Validate file type
+    # Validate file type extension
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
@@ -39,6 +70,9 @@ async def upload_document(
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File exceeds 20MB limit")
+
+    # Validate magic bytes / signatures
+    validate_file_magic_bytes(content, ext)
 
     # Upload to storage
     s3_key = await upload_file(current_user.id, content, file.filename, ext)
@@ -55,8 +89,17 @@ async def upload_document(
     db.add(doc)
     await db.commit()
 
-    # Process in background (document must be committed first so background session can find it)
-    background_tasks.add_task(_process_in_background, doc.id)
+    # Process in background (document must be committed first so worker can find it)
+    dispatched_celery = False
+    try:
+        from app.workers.document_tasks import process_document_task
+        process_document_task.delay(str(doc.id))
+        dispatched_celery = True
+    except Exception as exc:
+        logger.warning(f"Celery dispatch unavailable ({exc}), falling back to FastAPI BackgroundTasks")
+
+    if not dispatched_celery:
+        background_tasks.add_task(_process_in_background, doc.id)
 
     return doc
 

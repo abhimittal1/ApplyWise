@@ -11,6 +11,7 @@ import {
   type JobPreview,
   type JobSearchResponse,
 } from '@/lib/api/jobs';
+import { sanitizeUrl } from '@/lib/security';
 
 interface AddJobModalProps {
   isOpen: boolean;
@@ -451,9 +452,9 @@ export default function AddJobModal({ isOpen, onClose, onJobAdded }: AddJobModal
                             {result.description}
                           </p>
                         )}
-                        {result.url && (
+                        {sanitizeUrl(result.url) && (
                           <a
-                            href={result.url}
+                            href={sanitizeUrl(result.url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
