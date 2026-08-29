@@ -1,7 +1,17 @@
 import axios from 'axios';
 
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
+  }
+  return '/api/v1';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
@@ -44,7 +54,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry && !isRefreshEndpoint) {
       originalRequest._retry = true;
       try {
-        const { data } = await axios.post('/api/v1/auth/refresh', null, {
+        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, null, {
           withCredentials: true,
         });
         setAccessToken(data.access_token);

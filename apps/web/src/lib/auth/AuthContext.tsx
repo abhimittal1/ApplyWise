@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import api, { setAccessToken, getAccessToken } from '@/lib/api/client';
+import api, { setAccessToken, getAccessToken, API_BASE_URL } from '@/lib/api/client';
 
 interface User {
   id: string;
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const googleLogin = () => {
-    window.location.href = '/api/v1/auth/google';
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
   return (

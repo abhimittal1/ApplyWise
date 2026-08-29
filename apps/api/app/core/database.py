@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
@@ -16,6 +17,7 @@ engine = create_async_engine(
     pool_recycle=3600,  # Recycle connections after 1 hour
     connect_args={
         "server_settings": {"jit": "off"},  # Disable JIT for stability
+        "statement_cache_size": 0,  # Required for Supabase pooler / PgBouncer
     },
 )
 async_session_factory = async_sessionmaker(
@@ -50,7 +52,7 @@ async def check_db_connection() -> bool:
     """Health check for database connectivity"""
     try:
         async with async_session_factory() as session:
-            await session.execute("SELECT 1")
+            await session.execute(text("SELECT 1"))
             return True
     except Exception:
         return False

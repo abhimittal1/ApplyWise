@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Job Search APIs
     ADZUNA_APP_ID: str = ""
     ADZUNA_APP_KEY: str = ""
-    JOOBLE_API_KEY: str = "449bd1fb-edeb-48e8-bc5c-5fae53b77a44"
+    JOOBLE_API_KEY: str = ""
     RAPIDAPI_KEY: str = ""
 
     # Storage

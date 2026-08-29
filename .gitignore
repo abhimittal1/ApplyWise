@@ -3,11 +3,21 @@ node_modules/
 __pycache__/
 *.pyc
 .ruff_cache/
+.venv/
+venv/
+ENV/
+env/
 
-# Build
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build & Deploy
 dist/
 build/
 *.egg-info/
+.vercel/
 
 # Environment
 .env
