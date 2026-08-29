@@ -4,10 +4,12 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  const apiUrl = env.INTERNAL_API_URL || process.env.INTERNAL_API_URL || env.VITE_API_URL || process.env.VITE_API_URL || 'http://localhost:8000';
+  const rootDir = path.resolve(__dirname, '../..');
+  const env = loadEnv(mode, rootDir, '');
+  const apiUrl = env.VITE_API_URL || process.env.VITE_API_URL || '';
 
   return {
+    envDir: rootDir,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
@@ -20,12 +22,17 @@ export default defineConfig(({ mode }) => {
       watch: {
         usePolling: true,
       },
-      proxy: {
-        '/api': {
-          target: apiUrl,
-          changeOrigin: true,
-        },
-      },
+      ...(apiUrl
+        ? {
+            proxy: {
+              '/api': {
+                target: apiUrl,
+                changeOrigin: true,
+                secure: false,
+              },
+            },
+          }
+        : {}),
     },
   };
 });
