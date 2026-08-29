@@ -35,6 +35,31 @@ if settings.GOOGLE_CLIENT_ID:
     )
 
 
+def _set_auth_cookie(response: Response, refresh_token_str: str) -> None:
+    is_secure = not settings.DEBUG
+    samesite_val = "none" if is_secure else "lax"
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token_str,
+        httponly=True,
+        secure=is_secure,
+        samesite=samesite_val,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/api/v1/auth",
+    )
+
+
+def _clear_auth_cookie(response: Response) -> None:
+    is_secure = not settings.DEBUG
+    samesite_val = "none" if is_secure else "lax"
+    response.delete_cookie(
+        key="refresh_token",
+        path="/api/v1/auth",
+        secure=is_secure,
+        samesite=samesite_val,
+    )
+
+
 async def _issue_tokens(user: User, response: Response, db: AsyncSession) -> TokenResponse:
     """Create access + refresh tokens and set refresh token as httpOnly cookie."""
     access_token = create_access_token(user.id)
@@ -49,15 +74,7 @@ async def _issue_tokens(user: User, response: Response, db: AsyncSession) -> Tok
     db.add(rt)
     await db.flush()
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token_str,
-        httponly=True,
-        secure=False,  # Set True in production with HTTPS
-        samesite="lax",
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-        path="/api/v1/auth",
-    )
+    _set_auth_cookie(response, refresh_token_str)
 
     return TokenResponse(
         access_token=access_token,
@@ -146,7 +163,7 @@ async def logout(
     token = request.cookies.get("refresh_token")
     if token:
         await db.execute(delete(RefreshToken).where(RefreshToken.token == token))
-    response.delete_cookie("refresh_token", path="/api/v1/auth")
+    _clear_auth_cookie(response)
     return {"message": "Logged out"}
 
 
@@ -207,17 +224,9 @@ async def google_callback(
     )
     db.add(rt)
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token_str,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-        path="/api/v1/auth",
-    )
+    _set_auth_cookie(response, refresh_token_str)
 
-    frontend_url = settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "http://localhost:5173"
+    frontend_url = settings.FRONTEND_URL or (settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "http://localhost:5173")
     from starlette.responses import RedirectResponse
 
     return RedirectResponse(url=f"{frontend_url}/auth/callback#token={access_token}")

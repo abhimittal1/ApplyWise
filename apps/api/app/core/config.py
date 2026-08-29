@@ -46,21 +46,31 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str = ""
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    CORS_ORIGIN_REGEX: str = r"^https://.*\.vercel\.app$"
+    FRONTEND_URL: str = ""
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, list[str]]) -> list[str]:
+        origins: list[str] = []
         if isinstance(v, str):
-            if v.startswith("[") and v.endswith("]"):
+            v_str = v.strip()
+            if v_str.startswith("[") and v_str.endswith("]"):
                 try:
-                    return json.loads(v)
+                    parsed = json.loads(v_str)
+                    if isinstance(parsed, list):
+                        origins = [str(i).strip().rstrip("/") for i in parsed if str(i).strip()]
                 except Exception:
                     pass
-            return [i.strip() for i in v.split(",") if i.strip()]
+            if not origins:
+                origins = [i.strip().strip("'\"").rstrip("/") for i in v_str.split(",") if i.strip()]
         elif isinstance(v, list):
-            return v
-        return ["http://localhost:5173"]
+            origins = [str(i).strip().rstrip("/") for i in v if str(i).strip()]
+
+        if not origins:
+            origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+        return list(dict.fromkeys(origins))
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../../.env", "apps/api/.env"),
