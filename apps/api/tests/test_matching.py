@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 
 from app.models.job import Job
@@ -55,15 +55,16 @@ class TestMatchingEngine(unittest.IsolatedAsyncioTestCase):
     async def test_generate_reasoning_fallback_without_client(self):
         """Verify fallback reasoning when OpenAI client is not initialized."""
         job = Job(id=uuid.uuid4(), user_id=uuid.uuid4(), title="Backend Engineer", company="Stripe")
-        reasoning = await _generate_reasoning(
-            job=job,
-            score=85.0,
-            strong_points=["Python", "FastAPI"],
-            skill_gaps=["Kubernetes"],
-            component_scores={"skill_overlap": 80, "semantic_similarity": 90},
-        )
-        self.assertIn("Match score: 85/100", reasoning)
-        self.assertIn("Matching skills: Python, FastAPI", reasoning)
+        with patch("app.services.matching.scorer.client", None):
+            reasoning = await _generate_reasoning(
+                job=job,
+                score=85.0,
+                strong_points=["Python", "FastAPI"],
+                skill_gaps=["Kubernetes"],
+                component_scores={"skill_overlap": 80, "semantic_similarity": 90},
+            )
+            self.assertIn("Match score: 85/100", reasoning)
+            self.assertIn("Matching skills: Python, FastAPI", reasoning)
 
 
 if __name__ == "__main__":

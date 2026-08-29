@@ -68,6 +68,40 @@ class Settings(BaseSettings):
     CORS_ORIGIN_REGEX: str = ""
     FRONTEND_URL: str = ""
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def assemble_database_url(cls, v: Union[str, None]) -> str:
+        if not v:
+            return "postgresql+asyncpg://postgres:postgres@localhost:5432/careeros"
+        url = str(v).strip()
+        # Convert postgres:// or postgresql:// to postgresql+asyncpg://
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        # Convert sslmode query parameter for asyncpg compatibility
+        if "sslmode=" in url:
+            url = (
+                url.replace("sslmode=require", "ssl=require")
+                .replace("sslmode=prefer", "ssl=prefer")
+                .replace("sslmode=disable", "ssl=disable")
+                .replace("sslmode=verify-ca", "ssl=verify-ca")
+                .replace("sslmode=verify-full", "ssl=verify-full")
+            )
+        return url
+
+    @field_validator("DATABASE_URL_SYNC", mode="before")
+    @classmethod
+    def assemble_database_url_sync(cls, v: Union[str, None]) -> str:
+        if not v:
+            return ""
+        url = str(v).strip()
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        elif url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql+asyncpg://", "postgresql://", 1)
+        return url
+
     @field_validator("TRUSTED_PROXIES", mode="before")
     @classmethod
     def assemble_trusted_proxies(cls, v: Union[str, list[str]]) -> list[str]:
@@ -89,6 +123,27 @@ class Settings(BaseSettings):
         if not proxies:
             proxies = ["127.0.0.1", "::1"]
         return list(dict.fromkeys(proxies))
+
+    @model_validator(mode="after")
+    def sync_database_urls(self) -> "Settings":
+        # Derive DATABASE_URL_SYNC from DATABASE_URL if not explicitly set or if default localhost while DATABASE_URL is remote
+        is_sync_default = not self.DATABASE_URL_SYNC or (
+            "localhost" in self.DATABASE_URL_SYNC and "localhost" not in self.DATABASE_URL
+        )
+        if is_sync_default:
+            sync_url = self.DATABASE_URL
+            if sync_url.startswith("postgresql+asyncpg://"):
+                sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+            elif sync_url.startswith("postgres://"):
+                sync_url = sync_url.replace("postgres://", "postgresql://", 1)
+            if "ssl=require" in sync_url and "sslmode=" not in sync_url:
+                sync_url = sync_url.replace("ssl=require", "sslmode=require")
+            self.DATABASE_URL_SYNC = sync_url
+        elif self.DATABASE_URL_SYNC.startswith("postgres://"):
+            self.DATABASE_URL_SYNC = self.DATABASE_URL_SYNC.replace("postgres://", "postgresql://", 1)
+        elif self.DATABASE_URL_SYNC.startswith("postgresql+asyncpg://"):
+            self.DATABASE_URL_SYNC = self.DATABASE_URL_SYNC.replace("postgresql+asyncpg://", "postgresql://", 1)
+        return self
 
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":
