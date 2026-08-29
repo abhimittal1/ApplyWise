@@ -1,4 +1,5 @@
 import unittest
+
 from app.core.config import Settings
 
 

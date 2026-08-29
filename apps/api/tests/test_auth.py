@@ -1,15 +1,15 @@
 import unittest
 import uuid
 
+from app.core.config import get_settings
 from app.core.security import (
-    hash_password,
-    verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
     hash_token,
+    verify_password,
 )
-from app.core.config import get_settings
 
 settings = get_settings()
 

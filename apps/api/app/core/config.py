@@ -1,7 +1,7 @@
 import json
 import logging
 from functools import lru_cache
-from typing import Union
+
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -70,7 +70,7 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def assemble_database_url(cls, v: Union[str, None]) -> str:
+    def assemble_database_url(cls, v: str | None) -> str:
         if not v:
             return "postgresql+asyncpg://postgres:postgres@localhost:5432/careeros"
         url = str(v).strip()
@@ -92,7 +92,7 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL_SYNC", mode="before")
     @classmethod
-    def assemble_database_url_sync(cls, v: Union[str, None]) -> str:
+    def assemble_database_url_sync(cls, v: str | None) -> str:
         if not v:
             return ""
         url = str(v).strip()
@@ -104,7 +104,7 @@ class Settings(BaseSettings):
 
     @field_validator("TRUSTED_PROXIES", mode="before")
     @classmethod
-    def assemble_trusted_proxies(cls, v: Union[str, list[str]]) -> list[str]:
+    def assemble_trusted_proxies(cls, v: str | list[str]) -> list[str]:
         proxies: list[str] = []
         if isinstance(v, str):
             v_str = v.strip()
@@ -164,7 +164,7 @@ class Settings(BaseSettings):
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, list[str]]) -> list[str]:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         origins: list[str] = []
         if isinstance(v, str):
             v_str = v.strip()

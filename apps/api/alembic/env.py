@@ -5,7 +5,6 @@ from urllib.parse import urlparse
 from sqlalchemy import create_engine, pool
 
 from alembic import context
-
 from app.core.config import get_settings
 from app.core.database import Base
 from app.models import *  # noqa: F401,F403 — ensure all models are registered

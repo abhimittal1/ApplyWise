@@ -1,13 +1,13 @@
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.job import Job
 from app.services.matching.scorer import (
     WEIGHTS,
+    _generate_reasoning,
     _location_match,
     _skill_overlap,
-    _generate_reasoning,
 )
 
 
